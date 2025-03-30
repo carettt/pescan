@@ -39,8 +39,11 @@ struct FlatImport {
   dll: String
 }
 
+struct Output {
+}
+
 /// Flattens [Import] into [FlatImport]
-fn flatten_imports(raw_imports: &Vec<Import>) -> Vec<FlatImport> {
+fn flatten_imports(raw_imports: &[Import]) -> Vec<FlatImport> {
   return raw_imports.iter()
     .map(|i| FlatImport { name: i.name.to_string(), dll: i.dll.to_string() }).collect();
 }
