@@ -9,4 +9,6 @@ clap = { version = "4.5.32", features = [ "derive" ] }
 camino = "1.1.9"
 goblin = "0.9.3"
 scraper = "0.23.1"
-html5ever = "0.30.0"
+tokio = { version = "1.44.1", features = [ "full" ] }
+reqwest = { version = "0.12.15" }
+rayon = "1.10.0"

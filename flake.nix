@@ -15,6 +15,8 @@
           nativeBuildInputs = [
             pkgs.cargo
             pkgs.rustc
+            pkgs.openssl
+            pkgs.pkg-config
           ];
 
           shellHook = ''
