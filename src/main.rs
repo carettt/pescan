@@ -14,6 +14,12 @@ use goblin::{Object, pe::import::Import};
 use scraper::{Html, Selector};
 use tokio::sync::Semaphore;
 use tokio::task;
+use tabled::{
+  derive::display,
+  settings::{location::ByColumnName, object::{Columns, Rows}, Remove, Width},
+  Table,
+  Tabled
+};
 
 use std::fs;
 use std::collections::hash_set::HashSet;
@@ -23,29 +29,48 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Args {
+  /// Sample File
   file: Utf8PathBuf,
 
+  /// Summary of API functionality
   #[arg(short, long)]
-  description: bool,
+  info: bool,
+  /// DLL library of API
+  #[arg(short, long)]
+  library: bool,
+  /// Link to documentation of API
+  #[arg(short, long)]
+  documentation: bool,
+  /// Alias for -ild
+  #[arg(short='A', long)]
+  all: bool,
+
+  /// Maximum amount of threads used to make requests to https://malapi.io
   #[arg(short, long, default_value_t=4)]
   threads: usize
 }
 
-
-/// [FlatImport] is a utility struct to flatten the PE imports returned by the [goblin] crate
-#[derive(Debug)]
-struct FlatImport {
-  name: String,
-  dll: String
+#[derive(Tabled)]
+struct Details {
+  #[tabled(display("display::option", ""))]
+  info: Option<String>,
+  #[tabled(display("display::option", ""))]
+  library: Option<String>,
+  #[tabled(display("display::option", ""))]
+  documentation: Option<String>
 }
 
-struct Output {
+#[derive(Tabled)]
+struct SuspectImport<'a> {
+  name: &'a String,
+  #[tabled(inline)]
+  details: Option<&'a Details>
 }
 
-/// Flattens [Import] into [FlatImport]
-fn flatten_imports(raw_imports: &[Import]) -> Vec<FlatImport> {
+/// Flattens `Vec` of [Import]s into `Vec` of [String]s
+fn flatten_imports(raw_imports: &[Import]) -> Vec<String> {
   return raw_imports.iter()
-    .map(|i| FlatImport { name: i.name.to_string(), dll: i.dll.to_string() }).collect();
+    .map(|i| i.name.to_string()).collect();
 }
 
 /// Scrapes headers from HTML fetched from <https://malapi.io>
@@ -77,12 +102,13 @@ fn get_apis(document: &Html) -> Result<Vec<Vec<String>>> {
   Ok(apis)
 }
 
-/// Scrapes descriptions from details pages of APIs, <https://malapi.io>/winapi/{NAME}.
+/// Scrapes info/library/documentation URL from details pages of APIs,
+/// <https://malapi.io>/winapi/{NAME}.
 /// Performs requests asynchronously (number of threads can be set with `-t`)
-async fn get_details(imports: Vec<Vec<String>>, max_threads: &usize) -> Result<Vec<Vec<String>>> {
-  let mut details: Vec<Vec<String>> = Vec::with_capacity(imports.len());
+async fn get_details(imports: Vec<Vec<String>>, args: Arc<Args>) -> Result<Vec<Vec<Details>>> {
+  let mut details: Vec<Vec<Details>> = Vec::with_capacity(imports.len());
 
-  let semaphore = Arc::new(Semaphore::new(*max_threads));
+  let semaphore = Arc::new(Semaphore::new(args.threads));
 
   let client = Arc::new(reqwest::Client::builder()
     .user_agent(format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
@@ -92,8 +118,8 @@ async fn get_details(imports: Vec<Vec<String>>, max_threads: &usize) -> Result<V
   let details_selector = Arc::new(Selector::parse(".content")
     .map_err(|e| anyhow!("failed to parse selector: {e}"))?);
 
-  for category in imports {
-    let mut handles: Vec<task::JoinHandle<Result<String>>> = Vec::with_capacity(category.len());
+  for category in imports.iter().cloned() {
+    let mut handles: Vec<task::JoinHandle<Result<Details>>> = Vec::with_capacity(category.len());
 
     for import in category {
       let semaphore = Arc::clone(&semaphore);
@@ -101,42 +127,98 @@ async fn get_details(imports: Vec<Vec<String>>, max_threads: &usize) -> Result<V
 
       let details_url = Arc::clone(&details_url);
       let details_selector = Arc::clone(&details_selector);
-      
-      let handle: task::JoinHandle<Result<String>> = task::spawn(async move {
+
+      let args = Arc::clone(&args);
+
+      let handle: task::JoinHandle<Result<Details>> = task::spawn(async move {
         let _ = semaphore.acquire().await?;
+
+        let mut info: Option<String> = None;
+        let mut library: Option<String> = None;
+        let mut documentation: Option<String> = None;
 
         let page = client.get(format!("{details_url}{import}"))
           .send().await?
           .text().await?;
-        let details = Html::parse_document(&page);
+        let document = Html::parse_document(&page);
 
-        let description = details.select(&details_selector)
-          .nth(1).context("cannot find description")?
-          .text().collect::<String>();
+        let content = document.select(&details_selector)
+          .collect::<Vec<_>>();
 
-        Ok(description.trim().into())
+        if args.info || args.all {
+          info = Some(content.get(1)
+            .context("could not find info")?
+            .text().collect::<String>().trim().to_string());
+        }
+
+        if args.library || args.all {
+          library = Some(content.get(2)
+            .context("could not find library")?
+            .text().collect::<String>().trim().to_string());
+        }
+
+        if args.documentation || args.all {
+          documentation = Some(content.get(4)
+            .context("could not find documentation")?
+            .text().collect::<String>().trim().to_string());
+        }
+
+        Ok(Details { info, library, documentation })
       });
 
       handles.push(handle);
     }
 
-    let mut descriptions: Vec<String> = Vec::with_capacity(handles.len());
+    let mut detail: Vec<Details> = Vec::with_capacity(handles.len());
 
     for handle in handles {
-      descriptions.push(handle.await??);
+      detail.push(handle.await??);
     }
 
-    details.push(descriptions);
+    details.push(detail);
   }
 
   Ok(details)
+}
+
+fn create_tables(headers: &[String], data: &[Vec<SuspectImport>]) -> Vec<(String, Table)> {
+  let mut tables: Vec<(String, Table)> = Vec::with_capacity(headers.len());
+
+  for (i, category) in data.iter().enumerate() {
+    let mut table = (headers[i].to_owned(),
+      Table::new(category));
+
+    table.1.modify(Rows::new(0..), Width::wrap(20).keep_words(true));
+
+    if category.len() > 0 {
+      if let Some(details) = category[0].details {
+        if let None = details.info {
+          table.1.with(Remove::column(ByColumnName::new("info")));
+        }
+
+        if let None = details.library {
+          table.1.with(Remove::column(ByColumnName::new("library")));
+        }
+
+        if let None = details.documentation {
+          table.1.with(Remove::column(ByColumnName::new("documentation")));
+        }
+      } else {
+        table.1.with(Remove::column(Columns::new(1..=3)));
+      }
+    }
+
+    tables.push(table);
+  }
+
+  tables
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
   let args = Args::parse();
   
-  let file_buffer = fs::read(args.file)?;
+  let file_buffer = fs::read(&args.file)?;
   let sample_html = fs::read_to_string(Utf8PathBuf::from("../source.html"))?;
   let table  = Html::parse_document(&sample_html);
   let headers = get_headers(&table)?;
@@ -145,42 +227,58 @@ async fn main() -> Result<()> {
   match Object::parse(&file_buffer)? {
     Object::PE(pe) => {
       let imports = flatten_imports(&pe.imports);
-      let mut suspicious_imports = Vec::<Vec<String>>::new();
+      let mut suspicious_imports = Vec::new();
+      let mut details: Option<Vec<Vec<Details>>> = None;
 
       std::mem::drop(pe);
 
       for category in apis.iter() {
         let category_set = category.iter().cloned().collect::<HashSet<String>>();
-        let import_set = imports.iter().map(|i| i.name.clone()).collect::<HashSet<String>>();
+        let import_set = imports.iter().cloned().collect::<HashSet<String>>();
 
         suspicious_imports.push(category_set.intersection(&import_set).cloned().collect());
       }
 
-      let details = get_details(suspicious_imports.clone(), &args.threads).await?;
+      if args.info || args.library || args.documentation || args.all {
+        details = Some(
+          get_details(
+            suspicious_imports.iter().cloned().collect(),
+            Arc::new(args)
+          ).await?
+        );
+      }
 
-      for (i, header) in headers.iter().enumerate() {
-        if !suspicious_imports[i].is_empty() {
-          println!("{header}: [");
-          for (j, import) in suspicious_imports[i].iter().enumerate() {
-            print!("\t{import}");
+      let mut suspect_imports: Vec<Vec<SuspectImport>> = Vec::with_capacity(suspicious_imports.len());
 
-            if args.description {
-              println!(": {{");
-              println!("\t\t{}", details[i][j]);
-              println!("\t}},");
-            } else {
-              println!(",");
-            }
+      for i in 0..suspicious_imports.len() {
+        suspect_imports.push(Vec::new());
+        for (j, import) in suspicious_imports[i].iter().enumerate() {
+          if let Some(details) = &details {
+            suspect_imports[i].push(
+              SuspectImport { name: import, details: Some(&details[i][j]) }
+            );
+          } else {
+            suspect_imports[i].push(
+              SuspectImport { name: import, details: None }
+            );
           }
-          println!("]");
         }
       }
 
+      let tables = create_tables(&headers, &suspect_imports);
+
+      for (i, (header, table)) in tables.iter().enumerate() {
+        if suspect_imports[i].len() > 0 {
+          println!("{header}:");
+          println!("{table}");
+        }
+      }
     },
     _ => {
       bail!("invalid file type, only PE files are supported");
     }
   }
+
 
   Ok(())
 }
