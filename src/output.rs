@@ -31,17 +31,12 @@ pub enum Format {
 
 /// Contains optional details about imports. Set using `-i`, -`l`, and
 /// `-d` flags .
-#[skip_serializing_none]
-#[derive(Serialize, Tabled)]
 pub struct Details {
   /// Summary of API functionality
-  #[tabled(display("display::option", ""))]
   pub info: Option<String>,
   /// Library from which API is imported
-  #[tabled(display("display::option", ""))]
   pub library: Option<String>,
   /// Link to API documentation
-  #[tabled(display="format_url")]
   pub documentation: Option<String>
 }
 
@@ -51,10 +46,15 @@ pub struct Details {
 pub struct SuspectImport<'a> {
   /// Name of API
   pub name: &'a String,
-  /// Optional details
-  #[serde(flatten)]
-  #[tabled(inline)]
-  pub details: Option<&'a Details>
+  /// Summary of API functionality
+  #[tabled(display("display::option", ""))]
+  pub info: &'a Option<String>,
+  /// Library from which API is imported
+  #[tabled(display("display::option", ""))]
+  pub library: &'a Option<String>,
+  /// Link to API documentation
+  #[tabled(display("format_url"))]
+  pub documentation: &'a Option<String>,
 }
 
 /// Wrapper to group headers and suspect imports for outputting
@@ -157,16 +157,14 @@ impl Output<'_> {
             .from_writer(file);
 
           let mut table_headers = vec![String::from("name")];
-          if let Some(details) = category[0].details {
-            if details.info.is_some() {
-              table_headers.push(String::from("info"));
-            }
-            if details.library.is_some() {
-              table_headers.push(String::from("library"));
-            }
-            if details.documentation.is_some() {
-              table_headers.push(String::from("documentation"));
-            }
+          if category[0].info.is_some() {
+            table_headers.push(String::from("info"));
+          }
+          if category[0].library.is_some() {
+            table_headers.push(String::from("library"));
+          }
+          if category[0].documentation.is_some() {
+            table_headers.push(String::from("documentation"));
           }
 
           wtr.write_record(&table_headers)?;
