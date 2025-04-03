@@ -3,7 +3,7 @@ use tabled::{
   Table,
 };
 
-use super::output::SuspectImport;
+use crate::output::Output;
 
 pub fn format_url(url: &Option<String>) -> String {
   if let Some(url) = url {
@@ -13,13 +13,13 @@ pub fn format_url(url: &Option<String>) -> String {
   }
 }
 
-pub fn create_tables(headers: &[String], data: &[Vec<SuspectImport>], total_width: &usize)
+pub fn create_tables(output: &Output, total_width: &usize)
   -> Vec<(String, Table)> {
-  let mut tables: Vec<(String, Table)> = Vec::with_capacity(headers.len());
+  let mut tables: Vec<(String, Table)> = Vec::with_capacity(output.headers.len());
 
-  for (i, category) in data.iter().enumerate() {
+  for (i, category) in output.suspect_imports.iter().enumerate() {
     let mut total_columns = 4;
-    let mut table = (headers[i].to_owned(),
+    let mut table = (output.headers[i].to_owned(),
       Table::new(category));
 
     if category.len() > 0 {

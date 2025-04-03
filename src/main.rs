@@ -16,6 +16,7 @@ use clap::Parser;
 use anyhow::{Result, bail};
 use camino::Utf8PathBuf;
 use goblin::{Object, pe::import::Import};
+use output::{Format, Output};
 use scraper::Html;
 
 use std::fs;
@@ -23,7 +24,6 @@ use std::collections::hash_set::HashSet;
 use std::sync::Arc;
 
 use crate::args::Args;
-use crate::display::create_tables;
 use crate::output::{Details, SuspectImport};
 use crate::fetch::{get_headers, get_apis, get_details};
 
@@ -37,7 +37,7 @@ fn flatten_imports(raw_imports: &[Import]) -> Vec<String> {
 async fn main() -> Result<()> {
   let args = Arc::new(Args::parse());
   
-  let file_buffer = fs::read(&args.file)?;
+  let file_buffer = fs::read(&args.sample)?;
   let sample_html = fs::read_to_string(Utf8PathBuf::from("../source.html"))?;
   let table  = Html::parse_document(&sample_html);
   let headers = get_headers(&table)?;
@@ -84,13 +84,18 @@ async fn main() -> Result<()> {
         }
       }
 
-      let tables = create_tables(&headers, &suspect_imports, &args.width);
+      let output = Output { headers, suspect_imports };
 
-      for (i, (header, table)) in tables.iter().enumerate() {
-        if suspect_imports[i].len() > 0 {
-          println!("{header}:");
-          println!("{table}");
+      if let Some(file) = &args.path {
+        match &args.format {
+          Format::TXT => output.txt(file, &args.width)?,
+          Format::JSON => output.json(file)?,
+          Format::YAML => output.yaml(file)?,
+          Format::TOML => output.toml(file)?,
+          Format::CSV => output.csv(file)?
         }
+      } else {
+        output.display(&args.width);
       }
     },
     _ => {

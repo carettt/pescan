@@ -1,12 +1,15 @@
 use clap::Parser;
 use camino::Utf8PathBuf;
 
+use crate::output::Format;
+
 /// pescan - static analysis tool for PE files via API import analysis
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Args {
   /// Sample File
-  pub file: Utf8PathBuf,
+  #[arg(value_name="FILE")]
+  pub sample: Utf8PathBuf,
 
   /// Show summary of API functionality
   #[arg(short, long)]
@@ -21,11 +24,18 @@ pub struct Args {
   #[arg(short='A', long)]
   pub all: bool,
 
+  /// Maximum amount of threads used to make requests to https://malapi.io
+  #[arg(short, long, default_value_t=4)]
+  pub threads: usize,
+
   /// Maximum width of tables
   #[arg(short, long, default_value_t=80)]
   pub width: usize,
 
-  /// Maximum amount of threads used to make requests to https://malapi.io
-  #[arg(short, long, default_value_t=4)]
-  pub threads: usize
+  /// Output format
+  #[arg(short, long, value_enum, default_value_t=Format::TXT)]
+  pub format: Format,
+  /// Output path
+  #[arg(short='o', long="output", value_name="PATH")]
+  pub path: Option<Utf8PathBuf>,
 }
