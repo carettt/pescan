@@ -32,18 +32,22 @@ struct Args {
   /// Sample File
   file: Utf8PathBuf,
 
-  /// Summary of API functionality
+  /// Show summary of API functionality
   #[arg(short, long)]
   info: bool,
-  /// DLL library of API
+  /// Show DLL library of API
   #[arg(short, long)]
   library: bool,
-  /// Link to documentation of API
+  /// Show link to documentation of API
   #[arg(short, long)]
   documentation: bool,
   /// Alias for -ild
   #[arg(short='A', long)]
   all: bool,
+
+  /// Maximum width of tables
+  #[arg(short, long, default_value_t=80)]
+  width: usize,
 
   /// Maximum amount of threads used to make requests to https://malapi.io
   #[arg(short, long, default_value_t=4)]
@@ -56,7 +60,7 @@ struct Details {
   info: Option<String>,
   #[tabled(display("display::option", ""))]
   library: Option<String>,
-  #[tabled(display("display::option", ""))]
+  #[tabled(display="format_url")]
   documentation: Option<String>
 }
 
@@ -181,32 +185,44 @@ async fn get_details(imports: Vec<Vec<String>>, args: Arc<Args>) -> Result<Vec<V
   Ok(details)
 }
 
-fn create_tables(headers: &[String], data: &[Vec<SuspectImport>]) -> Vec<(String, Table)> {
+fn format_url(url: &Option<String>) -> String {
+  if let Some(url) = url {
+    format!("\x1B]8;;{}\x1B\\{}\x1B]8;;\x1B\\", url, "[link]")
+  } else {
+    String::from("")
+  }
+}
+
+fn create_tables(headers: &[String], data: &[Vec<SuspectImport>], total_width: &usize)
+  -> Vec<(String, Table)> {
   let mut tables: Vec<(String, Table)> = Vec::with_capacity(headers.len());
 
   for (i, category) in data.iter().enumerate() {
+    let mut total_columns = 4;
     let mut table = (headers[i].to_owned(),
       Table::new(category));
-
-    table.1.modify(Rows::new(0..), Width::wrap(20).keep_words(true));
 
     if category.len() > 0 {
       if let Some(details) = category[0].details {
         if let None = details.info {
           table.1.with(Remove::column(ByColumnName::new("info")));
+          total_columns -= 1;
         }
-
         if let None = details.library {
           table.1.with(Remove::column(ByColumnName::new("library")));
+          total_columns -= 1;
         }
-
         if let None = details.documentation {
           table.1.with(Remove::column(ByColumnName::new("documentation")));
+          total_columns -= 1;
         }
       } else {
         table.1.with(Remove::column(Columns::new(1..=3)));
+        total_columns -= 3;
       }
     }
+
+    table.1.modify(Rows::new(0..), Width::wrap(total_width / total_columns).keep_words(true));
 
     tables.push(table);
   }
@@ -216,7 +232,7 @@ fn create_tables(headers: &[String], data: &[Vec<SuspectImport>]) -> Vec<(String
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  let args = Args::parse();
+  let args = Arc::new(Args::parse());
   
   let file_buffer = fs::read(&args.file)?;
   let sample_html = fs::read_to_string(Utf8PathBuf::from("../source.html"))?;
@@ -243,7 +259,7 @@ async fn main() -> Result<()> {
         details = Some(
           get_details(
             suspicious_imports.iter().cloned().collect(),
-            Arc::new(args)
+            Arc::clone(&args)
           ).await?
         );
       }
@@ -265,7 +281,7 @@ async fn main() -> Result<()> {
         }
       }
 
-      let tables = create_tables(&headers, &suspect_imports);
+      let tables = create_tables(&headers, &suspect_imports, &args.width);
 
       for (i, (header, table)) in tables.iter().enumerate() {
         if suspect_imports[i].len() > 0 {
