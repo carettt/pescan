@@ -1,3 +1,6 @@
+//! Provides [Format] enum containing supported output formats,
+//! and structs for abstracting import data to output.
+
 use serde_with::skip_serializing_none;
 use tabled::{Tabled, derive::display};
 use serde::{ser::SerializeMap, Serialize, Serializer};
@@ -22,31 +25,43 @@ pub enum Format {
   YAML,
   /// Tom's Obvious Minimal Language
   TOML,
-  /// Comma Separated Values
+  /// Comma Separated Values, WARNING: output path MUST be directory
   CSV,
 }
 
+/// Contains optional details about imports. Set using `-i`, -`l`, and
+/// `-d` flags .
 #[skip_serializing_none]
 #[derive(Serialize, Tabled)]
 pub struct Details {
+  /// Summary of API functionality
   #[tabled(display("display::option", ""))]
   pub info: Option<String>,
+  /// Library from which API is imported
   #[tabled(display("display::option", ""))]
   pub library: Option<String>,
+  /// Link to API documentation
   #[tabled(display="format_url")]
   pub documentation: Option<String>
 }
 
+/// Contains all of the suspect API's relevant data
 #[skip_serializing_none]
 #[derive(Serialize, Tabled)]
 pub struct SuspectImport<'a> {
+  /// Name of API
   pub name: &'a String,
+  /// Optional details
+  #[serde(flatten)]
   #[tabled(inline)]
   pub details: Option<&'a Details>
 }
 
+/// Wrapper to group headers and suspect imports for outputting
 pub struct Output<'b> {
+  /// [Vec] of technique categories
   pub headers: Vec<String>,
+  /// 2D [Vec] of suspect APIs by technique category
   pub suspect_imports: Vec<Vec<SuspectImport<'b>>>
 }
 
@@ -74,6 +89,7 @@ impl Serialize for Output<'_> {
 }
 
 impl Output<'_> {
+  /// Output to `stdout`
   pub fn display(&self, width: &usize) {
     let tables = create_tables(self, width);
 
@@ -85,6 +101,7 @@ impl Output<'_> {
     }
   }
 
+  /// Output to plain text at `path`
   pub fn txt(&self, path: &Utf8PathBuf, width: &usize) -> Result<()> {
     let mut file = File::create_new(path)?;
     let tables = create_tables(self, width);
@@ -99,6 +116,7 @@ impl Output<'_> {
     Ok(())
   }
 
+  /// Output to JSON at `path`
   pub fn json(&self, path: &Utf8PathBuf) -> Result<()> {
     let mut file = File::create_new(path)?;
     let json = serde_json::to_string_pretty(self)?;
@@ -108,6 +126,7 @@ impl Output<'_> {
     Ok(())
   }
 
+  /// Output to YAML at `path`
   pub fn yaml(&self, path: &Utf8PathBuf) -> Result<()> {
     let mut file = File::create_new(path)?;
     let yaml = serde_yml::to_string(self)?;
@@ -117,6 +136,7 @@ impl Output<'_> {
     Ok(())
   }
 
+  /// Output to TOML at `path`
   pub fn toml(&self, path: &Utf8PathBuf) -> Result<()> {
     let mut file = File::create_new(path)?;
     let toml = toml::to_string_pretty(self)?;
@@ -126,6 +146,7 @@ impl Output<'_> {
     Ok(())
   }
 
+  /// Output to CSV at `path/{HEADER}`
   pub fn csv(&self, path: &Utf8PathBuf) -> Result<()> {
     if path.is_dir() {
       for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {

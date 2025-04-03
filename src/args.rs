@@ -1,3 +1,6 @@
+//! Provides [Args] struct with [clap] derive syntax for defining
+//! CLI interface
+
 use clap::Parser;
 use camino::Utf8PathBuf;
 
@@ -24,7 +27,7 @@ pub struct Args {
   #[arg(short='A', long)]
   pub all: bool,
 
-  /// Maximum amount of threads used to make requests to https://malapi.io
+  /// Maximum amount of threads used to make requests to <https://malapi.io>
   #[arg(short, long, default_value_t=4)]
   pub threads: usize,
 

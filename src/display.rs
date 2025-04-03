@@ -1,3 +1,5 @@
+//! Provides functions used for outputting to `stdout`.
+
 use tabled::{
   settings::{location::ByColumnName, object::{Columns, Rows}, Remove, Width},
   Table,
@@ -5,6 +7,7 @@ use tabled::{
 
 use crate::output::Output;
 
+/// Shortens URLs to `[link]` with OSC8 ANSI styled hyperlinks
 pub fn format_url(url: &Option<String>) -> String {
   if let Some(url) = url {
     format!("\x1B]8;;{}\x1B\\{}\x1B]8;;\x1B\\", url, "[link]")
@@ -13,6 +16,8 @@ pub fn format_url(url: &Option<String>) -> String {
   }
 }
 
+/// Creates a [Vec] of pairs of headers and tables constrained
+/// to a certain width (approximately).
 pub fn create_tables(output: &Output, total_width: &usize)
   -> Vec<(String, Table)> {
   let mut tables: Vec<(String, Table)> = Vec::with_capacity(output.headers.len());

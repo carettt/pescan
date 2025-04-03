@@ -1,3 +1,6 @@
+//! Provides functions used to scrape API data from
+//! <https://malapi.io>.
+
 use anyhow::{Result, Context, anyhow};
 use scraper::{Html, Selector};
 use tokio::sync::Semaphore;
