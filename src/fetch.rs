@@ -13,9 +13,6 @@ use crate::output::Details;
 
 /// Scrapes headers from HTML fetched from <https://malapi.io>
 pub fn get_headers(document: &Html) -> Result<Vec<String>> {
-  let client = reqwest::Client::builder()
-      .user_agent(format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
-      .build()?;
   let header_selector = Selector::parse("th")
     .map_err(|e| anyhow!("failed to parse selector: {e}"))?;
 

@@ -14,7 +14,6 @@ pub mod fetch;
 
 use clap::Parser;
 use anyhow::{Result, bail};
-use camino::Utf8PathBuf;
 use goblin::{Object, pe::import::Import};
 use output::{Format, Output};
 use scraper::Html;
@@ -36,10 +35,18 @@ fn flatten_imports(raw_imports: &[Import]) -> Vec<String> {
 #[tokio::main]
 async fn main() -> Result<()> {
   let args = Arc::new(Args::parse());
+
+  let client = reqwest::Client::builder()
+    .user_agent(format!("{}/{}",
+        env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
+    .build()?;
   
   let file_buffer = fs::read(&args.sample)?;
-  let sample_html = fs::read_to_string(Utf8PathBuf::from("../source.html"))?;
-  let table  = Html::parse_document(&sample_html);
+  let table  = Html::parse_document(
+    &client.get("https://malapi.io")
+      .send().await?
+      .text().await?
+  );
   let headers = get_headers(&table)?;
   let apis = get_apis(&table)?;
 
