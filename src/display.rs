@@ -8,7 +8,7 @@ use tabled::{
 use crate::output::Output;
 
 /// Shortens URLs to `[link]` with OSC8 ANSI styled hyperlinks
-pub fn format_url(url: &Option<String>) -> String {
+pub fn format_url(url: &Option<&String>) -> String {
   if let Some(url) = url {
     format!("\x1B]8;;{}\x1B\\{}\x1B]8;;\x1B\\", url, "[link]")
   } else {

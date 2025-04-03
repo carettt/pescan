@@ -48,13 +48,13 @@ pub struct SuspectImport<'a> {
   pub name: &'a String,
   /// Summary of API functionality
   #[tabled(display("display::option", ""))]
-  pub info: &'a Option<String>,
+  pub info: Option<&'a String>,
   /// Library from which API is imported
   #[tabled(display("display::option", ""))]
-  pub library: &'a Option<String>,
+  pub library: Option<&'a String>,
   /// Link to API documentation
   #[tabled(display("format_url"))]
-  pub documentation: &'a Option<String>,
+  pub documentation: Option<&'a String>,
 }
 
 /// Wrapper to group headers and suspect imports for outputting

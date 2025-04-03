@@ -83,18 +83,18 @@ async fn main() -> Result<()> {
             suspect_imports[i].push(
               SuspectImport {
                 name: import,
-                info: &details[i][j].info,
-                library: &details[i][j].library,
-                documentation: &details[i][j].documentation
+                info: details[i][j].info.as_ref(),
+                library: details[i][j].library.as_ref(),
+                documentation: details[i][j].documentation.as_ref()
               }
             );
           } else {
             suspect_imports[i].push(
               SuspectImport {
                 name: import,
-                info: &None,
-                library: &None,
-                documentation: &None
+                info: None,
+                library: None,
+                documentation: None
               }
             );
           }
