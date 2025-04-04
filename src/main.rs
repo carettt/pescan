@@ -21,6 +21,7 @@ use scraper::Html;
 use std::fs;
 use std::collections::hash_set::HashSet;
 use std::sync::Arc;
+use std::io::Write;
 
 use crate::args::Args;
 use crate::output::{Details, SuspectImport};
@@ -103,16 +104,29 @@ async fn main() -> Result<()> {
 
       let output = Output { headers, suspect_imports };
 
-      if let Some(file) = &args.path {
-        match &args.format {
-          Format::TXT => output.txt(file, &args.width)?,
-          Format::JSON => output.json(file)?,
-          Format::YAML => output.yaml(file)?,
-          Format::TOML => output.toml(file)?,
-          Format::CSV => output.csv(file)?
+      match &args.format {
+        Format::CSV => {
+          if let Some(path) = &args.path {
+            output.csv_to_file(path)?;
+          } else {
+            output.csv_to_stdout()?;
+          }
+        },
+        _ => {
+          let mut buf: Box<dyn Write> = if let Some(path) = &args.path {
+            Box::new(fs::File::create_new(path)?)
+          } else {
+            Box::new(std::io::stdout())
+          };
+
+          match &args.format {
+            Format::TXT => output.txt(&mut buf, &args.width)?,
+            Format::JSON => output.json(&mut buf)?,
+            Format::YAML => output.yaml(&mut buf)?,
+            Format::TOML => output.toml(&mut buf)?,
+            Format::CSV => unreachable!()
+          }
         }
-      } else {
-        output.display(&args.width);
       }
     },
     _ => {

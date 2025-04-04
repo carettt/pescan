@@ -89,65 +89,49 @@ impl Serialize for Output<'_> {
 }
 
 impl Output<'_> {
-  /// Output to `stdout`
-  pub fn display(&self, width: &usize) {
-    let tables = create_tables(self, width);
-
-    for (i, (header, table)) in tables.iter().enumerate() {
-      if self.suspect_imports[i].len() > 0 {
-        println!("{header}:");
-        println!("{table}");
-      }
-    }
-  }
-
-  /// Output to plain text at `path`
-  pub fn txt(&self, path: &Utf8PathBuf, width: &usize) -> Result<()> {
-    let mut file = File::create_new(path)?;
+  /// Output to `buf` as plain text
+  pub fn txt<T: Write>(&self, buf: &mut T, width: &usize) -> Result<()> {
     let tables = create_tables(self, width);
 
     for ((header, table), category) in tables.iter().zip(self.suspect_imports.iter()) {
       if category.len() > 0 {
-        writeln!(file, "{header}:").context("could not write header to file")?;
-        writeln!(file, "{table}").context("could not write table to file")?;
+        writeln!(buf, "{header}:").context("could not write header to file")?;
+        writeln!(buf, "{table}").context("could not write table to file")?;
       }
     }
 
     Ok(())
   }
 
-  /// Output to JSON at `path`
-  pub fn json(&self, path: &Utf8PathBuf) -> Result<()> {
-    let mut file = File::create_new(path)?;
+  /// Output to `buf` as JSON
+  pub fn json<T: Write>(&self, buf: &mut T) -> Result<()> {
     let json = serde_json::to_string_pretty(self)?;
 
-    writeln!(file, "{json}")?;
+    writeln!(buf, "{json}")?;
 
     Ok(())
   }
 
-  /// Output to YAML at `path`
-  pub fn yaml(&self, path: &Utf8PathBuf) -> Result<()> {
-    let mut file = File::create_new(path)?;
+  /// Output to `buf` as YAML
+  pub fn yaml<T: Write>(&self, buf: &mut T) -> Result<()> {
     let yaml = serde_yml::to_string(self)?;
 
-    writeln!(file, "{yaml}")?;
+    writeln!(buf, "{yaml}")?;
 
     Ok(())
   }
 
-  /// Output to TOML at `path`
-  pub fn toml(&self, path: &Utf8PathBuf) -> Result<()> {
-    let mut file = File::create_new(path)?;
+  /// Output to `buf` as TOML
+  pub fn toml<T: Write>(&self, buf: &mut T) -> Result<()> {
     let toml = toml::to_string_pretty(self)?;
 
-    writeln!(file, "{toml}")?;
+    writeln!(buf, "{toml}")?;
 
     Ok(())
   }
 
-  /// Output to CSV at `path/{HEADER}`
-  pub fn csv(&self, path: &Utf8PathBuf) -> Result<()> {
+  /// Output to `path/{HEADER}.csv` as CSV
+  pub fn csv_to_file(&self, path: &Utf8PathBuf) -> Result<()> {
     if path.is_dir() {
       for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {
         if category.len() > 0 {
@@ -181,5 +165,41 @@ impl Output<'_> {
     } else {
       Err(anyhow!("csv format requires output path to be directory"))
     }
+  }
+
+  /// Output to stdout as CSV
+  pub fn csv_to_stdout(&self) -> Result<()> {
+    for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {
+      if category.len() > 0 {
+        let mut wtr = csv::WriterBuilder::new()
+          .has_headers(false)
+          .from_writer(std::io::stdout());
+
+        println!("{header}:");
+        std::io::stdout().flush()?;
+
+        let mut table_headers = vec![String::from("name")];
+        if category[0].info.is_some() {
+          table_headers.push(String::from("info"));
+        }
+        if category[0].library.is_some() {
+          table_headers.push(String::from("library"));
+        }
+        if category[0].documentation.is_some() {
+          table_headers.push(String::from("documentation"));
+        }
+
+        wtr.write_record(&table_headers)?;
+
+        for import in category {
+          wtr.serialize(import)?;
+        }
+
+        wtr.flush()?;
+        println!();
+      }
+    }
+
+    Ok(())
   }
 }
