@@ -79,7 +79,7 @@ impl Serialize for Output<'_> {
     let mut map = serializer.serialize_map(Some(self.headers.len()))?;
 
     for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {
-      if category.len() > 0 {
+      if !category.is_empty() {
         map.serialize_entry(header, category)?;
       }
     }
@@ -94,7 +94,7 @@ impl Output<'_> {
     let tables = create_tables(self, width);
 
     for ((header, table), category) in tables.iter().zip(self.suspect_imports.iter()) {
-      if category.len() > 0 {
+      if !category.is_empty() {
         writeln!(buf, "{header}:").context("could not write header to file")?;
         writeln!(buf, "{table}").context("could not write table to file")?;
       }
@@ -134,7 +134,7 @@ impl Output<'_> {
   pub fn csv_to_file(&self, path: &Utf8PathBuf) -> Result<()> {
     if path.is_dir() {
       for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {
-        if category.len() > 0 {
+        if !category.is_empty() {
           let file = File::create_new(path.join(format!("{header}.csv")))?;
           let mut wtr = csv::WriterBuilder::new()
             .has_headers(false)
@@ -170,7 +170,7 @@ impl Output<'_> {
   /// Output to stdout as CSV
   pub fn csv_to_stdout(&self) -> Result<()> {
     for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {
-      if category.len() > 0 {
+      if !category.is_empty() {
         let mut wtr = csv::WriterBuilder::new()
           .has_headers(false)
           .from_writer(std::io::stdout());

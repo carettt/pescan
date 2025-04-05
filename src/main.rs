@@ -29,8 +29,8 @@ use crate::fetch::{get_headers, get_apis, get_details};
 
 /// Flattens `Vec` of [Import]s into `Vec` of [String]s
 fn flatten_imports(raw_imports: &[Import]) -> Vec<String> {
-  return raw_imports.iter()
-    .map(|i| i.name.to_string()).collect();
+  raw_imports.iter()
+    .map(|i| i.name.to_string()).collect()
 }
 
 #[tokio::main]
@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
       if args.info || args.library || args.documentation || args.all {
         details = Some(
           get_details(
-            suspicious_imports.iter().cloned().collect(),
+            suspicious_imports.to_vec(),
             Arc::clone(&args)
           ).await?
         );

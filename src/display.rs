@@ -27,7 +27,7 @@ pub fn create_tables(output: &Output, total_width: &usize)
     let mut table = (output.headers[i].to_owned(),
       Table::new(category));
 
-    if category.len() > 0 {
+    if !category.is_empty() {
       if category[0].info.is_none() {
         table.1.with(Remove::column(ByColumnName::new("info")));
         total_columns -= 1;
