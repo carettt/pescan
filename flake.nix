@@ -13,7 +13,7 @@
     };
   };
 
-  outputs = { nixpkgs, fenix, naersk, ... }: let
+  outputs = { self, nixpkgs, fenix, naersk, ... }: let
     buildSystem = "x86_64-linux";
     hostSystem = "x86_64-w64-mingw32";
     rustTarget = "x86_64-pc-windows-gnu";
@@ -45,9 +45,21 @@
     });
 
     packages = {
-      ${buildSystem}.default = naerskOverride.buildPackage {
-        src = ./.;
-        strictDeps = true;
+      ${buildSystem} = rec {
+        default = naerskOverride.buildPackage {
+          src = ./.;
+          strictDeps = true;
+        };
+
+        dockerImage = pkgs.dockerTools.buildLayeredImage {
+          name = "pescan";
+          tag = "latest";
+          created = "2025-04-06";
+
+          contents = [ default pkgs.cacert ];
+
+          config.Entrypoint = [ "${default}/bin/pescan" ];
+        };
       };
 
       ${hostSystem}.default = naerskOverride.buildPackage {
