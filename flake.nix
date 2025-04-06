@@ -1,50 +1,66 @@
 {
-  description = "rust project";
+  description = "static analysis tool for PE files via API import analysis";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    naersk = {
+      url = "github:nix-community/naersk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-      in {
-        devShells.default = pkgs.mkShell {
-          nativeBuildInputs = [
-            pkgs.cargo
-            pkgs.rustc
-            pkgs.openssl
-            pkgs.pkg-config
-          ];
+  outputs = { nixpkgs, fenix, naersk, ... }: let
+    buildSystem = "x86_64-linux";
+    hostSystem = "x86_64-w64-mingw32";
+    rustTarget = "x86_64-pc-windows-gnu";
 
-          shellHook = ''
-            ${pkgs.cowsay}/bin/cowsay "entered dev env!" | ${pkgs.lolcat}/bin/lolcat -F 0.5
-          '';
-        };
+    pkgs = nixpkgs.legacyPackages.${buildSystem};
+    hostPkgs = pkgs.pkgsCross.mingwW64;
 
-        packages = rec {
-          pescan = let
-            manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
-          in pkgs.rustPlatform.buildRustPackage {
-            pname = manifest.name;
-            version = manifest.version;
-            cargoLock.lockFile = ./Cargo.lock;
-            src = pkgs.lib.cleanSource ./.;
-          };
+    toolchain = with fenix.packages.${buildSystem}; combine [
+      stable.minimalToolchain
+      targets.${rustTarget}.stable.rust-std
+    ];
+    naerskOverride = naersk.lib.${buildSystem}.override {
+      cargo = toolchain;
+      rustc = toolchain;
+    };
+  in {
+    devShells.${buildSystem}.default = pkgs.mkShell (let
+      toolchain = fenix.packages.${buildSystem}.stable.defaultToolchain;
+    in {
+      nativeBuildInputs = [
+        toolchain
+        pkgs.openssl
+        pkgs.pkg-config
+      ];
 
-          dockerImage = pkgs.dockerTools.buildLayeredImage {
-            name = "pescan";
-            tag = "latest";
-            created = "2025-03-20";
+      shellHook = ''
+        ${pkgs.cowsay}/bin/cowsay "entered dev env!" | ${pkgs.lolcat}/bin/lolcat -F 0.5
+      '';
+    });
 
-            contents = [
-              pescan
-            ];
+    packages = {
+      ${buildSystem}.default = naerskOverride.buildPackage {
+        src = ./.;
+        strictDeps = true;
+      };
 
-            config.Cmd = [ "/bin/pescan" ];
-          };
-        };
-      });
+      ${hostSystem}.default = naerskOverride.buildPackage {
+        src = ./.;
+        strictDeps = true;
+
+        depsBuildBuild = [
+          hostPkgs.stdenv.cc
+          hostPkgs.windows.pthreads
+        ];
+
+        CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
+      };
+    };
+  };
 }
