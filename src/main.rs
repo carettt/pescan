@@ -14,7 +14,7 @@ pub mod output;
 pub mod fetch;
 
 use clap::Parser;
-use anyhow::{Result, bail};
+use anyhow::{Result, Context, bail};
 use goblin::{Object, pe::import::Import};
 use output::{Format, Output};
 use scraper::Html;
@@ -53,7 +53,8 @@ async fn main() -> Result<()> {
 
   let mut sample_buffer: Vec<u8> = Vec::new();
 
-  if let Some(path) = &args.path {
+
+  if let Some(path) = &args.sample {
     sample_buffer = fs::read(path)?;
   } else {
     let stdin = std::io::stdin();
@@ -64,7 +65,9 @@ async fn main() -> Result<()> {
     }
   }
 
-  match Object::parse(&sample_buffer)? {
+  match Object::parse(&sample_buffer)
+    .context("could not parse buffer, if running in docker, make sure interactive (-i) flag is enabled")?
+  {
     Object::PE(pe) => {
       let imports = flatten_imports(&pe.imports);
       let mut suspicious_imports = Vec::new();
