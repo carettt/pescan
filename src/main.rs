@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![allow(clippy::all)]
 
 //! PEScan is a malware analysis tool that scans portable executable (PE)
 //! files for potentially malicious Windows API imports.
@@ -21,7 +22,7 @@ use scraper::Html;
 use std::fs;
 use std::collections::hash_set::HashSet;
 use std::sync::Arc;
-use std::io::Write;
+use std::io::{Read, Write, IsTerminal};
 
 use crate::args::Args;
 use crate::output::{Details, SuspectImport};
@@ -42,7 +43,6 @@ async fn main() -> Result<()> {
         env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
     .build()?;
   
-  let file_buffer = fs::read(&args.sample)?;
   let table  = Html::parse_document(
     &client.get("https://malapi.io")
       .send().await?
@@ -51,7 +51,20 @@ async fn main() -> Result<()> {
   let headers = get_headers(&table)?;
   let apis = get_apis(&table)?;
 
-  match Object::parse(&file_buffer)? {
+  let mut sample_buffer: Vec<u8> = Vec::new();
+
+  if let Some(path) = &args.path {
+    sample_buffer = fs::read(path)?;
+  } else {
+    let stdin = std::io::stdin();
+    if !stdin.is_terminal() {
+      let _ = std::io::stdin().read_to_end(&mut sample_buffer)?;
+    } else {
+      bail!("sample not found in [FILE] or stdin.");
+    }
+  }
+
+  match Object::parse(&sample_buffer)? {
     Object::PE(pe) => {
       let imports = flatten_imports(&pe.imports);
       let mut suspicious_imports = Vec::new();

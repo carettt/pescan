@@ -12,7 +12,7 @@ use crate::output::Format;
 pub struct Args {
   /// Sample File
   #[arg(value_name="FILE")]
-  pub sample: Utf8PathBuf,
+  pub sample: Option<Utf8PathBuf>,
 
   /// Show summary of API functionality
   #[arg(short, long)]
