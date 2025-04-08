@@ -19,7 +19,7 @@ use goblin::{Object, pe::import::Import};
 use output::{Format, Output};
 use scraper::Html;
 
-use std::fs;
+use std::{env, fs};
 use std::collections::hash_set::HashSet;
 use std::sync::Arc;
 use std::io::{Read, Write, IsTerminal};
@@ -66,7 +66,11 @@ async fn main() -> Result<()> {
   }
 
   match Object::parse(&sample_buffer)
-    .context("could not parse buffer, if running in docker, make sure interactive (-i) flag is enabled")?
+    .context(if env::var("PESCAN_DOCKER") == Ok(String::from("true")) {
+      "docker container not running in interactive mode"
+    } else {
+      "could not parse sample"
+    })?
   {
     Object::PE(pe) => {
       let imports = flatten_imports(&pe.imports);

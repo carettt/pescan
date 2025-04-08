@@ -58,7 +58,10 @@
 
           contents = [ default pkgs.cacert ];
 
-          config.Entrypoint = [ "${default}/bin/pescan" ];
+          config= {
+            Env = [ "PESCAN_DOCKER=true" ];
+            Entrypoint = [ "${default}/bin/pescan" ];
+          };
         };
       };
 
