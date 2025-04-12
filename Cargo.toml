@@ -2,6 +2,8 @@
 name = "pescan"
 version = "1.2.0"
 edition = "2024"
+authors = [ "caret_" ]
+description = "static analysis tool for PE files via API import analysis. GPL-3.0-or-later."
 
 [dependencies]
 anyhow = "1.0.97"
