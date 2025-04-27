@@ -8,25 +8,18 @@
 //! The binary can output in multiple formats and provide
 //! a potential attack chain for the sample.
 
-pub mod args;
-pub mod display;
-pub mod output;
-pub mod fetch;
-
 use clap::Parser;
 use anyhow::{Result, Context, bail};
 use goblin::{Object, pe::import::Import};
-use output::{Format, Output};
-use scraper::Html;
 
 use std::{env, fs};
 use std::collections::hash_set::HashSet;
 use std::sync::Arc;
 use std::io::{Read, Write, IsTerminal};
 
-use crate::args::Args;
-use crate::output::{Details, SuspectImport};
-use crate::fetch::{get_headers, get_apis, get_details};
+use pescan::args::Args;
+use pescan::output::{Details, SuspectImport, Format, Output};
+use pescan::cache::Cache;
 
 /// Flattens `Vec` of [Import]s into `Vec` of [String]s
 fn flatten_imports(raw_imports: &[Import]) -> Vec<String> {
@@ -38,28 +31,21 @@ fn flatten_imports(raw_imports: &[Import]) -> Vec<String> {
 async fn main() -> Result<()> {
   let args = Arc::new(Args::parse());
 
-  let client = reqwest::Client::builder()
-    .user_agent(format!("{}/{}",
-        env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
-    .build()?;
-  
-  let table  = Html::parse_document(
-    &client.get("https://malapi.io")
-      .send().await?
-      .text().await?
-  );
-  let headers = get_headers(&table)?;
-  let apis = get_apis(&table)?;
+  let cache = Cache::load(args.update).await?;
+  let headers = cache.get_headers();
+  let apis = cache.get_apis();
 
   let mut sample_buffer: Vec<u8> = Vec::new();
 
+  if args.update {
+  }
 
   if let Some(path) = &args.sample {
     sample_buffer = fs::read(path)?;
   } else {
-    let stdin = std::io::stdin();
+    let mut stdin = std::io::stdin();
     if !stdin.is_terminal() {
-      let _ = std::io::stdin().read_to_end(&mut sample_buffer)?;
+      let _ = stdin.read_to_end(&mut sample_buffer)?;
     } else {
       bail!("sample not found in [FILE] or stdin.");
     }
@@ -74,7 +60,7 @@ async fn main() -> Result<()> {
   {
     Object::PE(pe) => {
       let imports = flatten_imports(&pe.imports);
-      let mut suspicious_imports = Vec::new();
+      let mut suspicious_imports = Vec::<Vec<String>>::new();
       let mut details: Option<Vec<Vec<Details>>> = None;
 
       std::mem::drop(pe);
@@ -87,12 +73,33 @@ async fn main() -> Result<()> {
       }
 
       if args.info || args.library || args.documentation || args.all {
-        details = Some(
-          get_details(
-            suspicious_imports.to_vec(),
-            Arc::clone(&args)
-          ).await?
-        );
+        let mut matched_details = Vec::<Vec<Details>>::new();
+        for (i, category) in suspicious_imports.iter().enumerate() {
+          matched_details.push(Vec::new());
+          for import in category {
+            if let Some(api) = cache.get_api(i, import) {
+              let mut info = None;
+              let mut library = None;
+              let mut documentation = None;
+
+              if args.info || args.all {
+                info = Some(api.info.clone());
+              }
+              if args.library || args.all {
+                library = Some(api.library.clone());
+              }
+              if args.documentation || args.all {
+                documentation = Some(api.documentation.clone());
+              }
+
+              matched_details[i].push(Details { info, library, documentation });
+            } else {
+              matched_details[i].push(Details::default());
+            }
+          }
+        }
+
+        details = Some(matched_details);
       }
 
       let mut suspect_imports: Vec<Vec<SuspectImport>> = Vec::with_capacity(suspicious_imports.len());
@@ -127,9 +134,9 @@ async fn main() -> Result<()> {
       match &args.format {
         Format::CSV => {
           if let Some(path) = &args.path {
-            output.csv_to_file(path)?;
+            output.csv_to_file(path, &args)?;
           } else {
-            output.csv_to_stdout()?;
+            output.csv_to_stdout(&args)?;
           }
         },
         _ => {
@@ -144,7 +151,8 @@ async fn main() -> Result<()> {
             Format::JSON => output.json(&mut buf)?,
             Format::YAML => output.yaml(&mut buf)?,
             Format::TOML => output.toml(&mut buf)?,
-            Format::CSV => unreachable!()
+            Format::CSV => unreachable!(),
+            _ => todo!()
           }
         }
       }

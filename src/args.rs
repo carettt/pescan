@@ -14,6 +14,10 @@ pub struct Args {
   #[arg(value_name="FILE")]
   pub sample: Option<Utf8PathBuf>,
 
+  /// Update cache
+  #[arg(short, long)]
+  pub update: bool,
+
   /// Show summary of API functionality
   #[arg(short, long)]
   pub info: bool,
@@ -26,10 +30,6 @@ pub struct Args {
   /// Alias for -ild
   #[arg(short='A', long)]
   pub all: bool,
-
-  /// Maximum amount of threads used to make requests to <https://malapi.io>
-  #[arg(short, long, default_value_t=4)]
-  pub threads: usize,
 
   /// Maximum width of tables
   #[arg(short, long, default_value_t=80)]

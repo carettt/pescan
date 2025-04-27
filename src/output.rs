@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io::Write;
 
 use crate::display::{create_tables, format_url};
+use crate::args::Args;
 
 /// All possible output formats (set with -f or --format)
 #[non_exhaustive]
@@ -31,6 +32,7 @@ pub enum Format {
 
 /// Contains optional details about imports. Set using `-i`, -`l`, and
 /// `-d` flags .
+#[derive(Default)]
 pub struct Details {
   /// Summary of API functionality
   pub info: Option<String>,
@@ -55,6 +57,13 @@ pub struct SuspectImport<'a> {
   /// Link to API documentation
   #[tabled(display("format_url"))]
   pub documentation: Option<&'a String>,
+}
+
+impl SuspectImport<'_> {
+  fn len(&self) -> usize {
+    [self.info, self.library, self.documentation].iter()
+      .filter(|opt| opt.is_some()).count() + 1
+  }
 }
 
 /// Wrapper to group headers and suspect imports for outputting
@@ -131,7 +140,7 @@ impl Output<'_> {
   }
 
   /// Output to `path/{HEADER}.csv` as CSV
-  pub fn csv_to_file(&self, path: &Utf8PathBuf) -> Result<()> {
+  pub fn csv_to_file(&self, path: &Utf8PathBuf, args: &Args) -> Result<()> {
     if path.is_dir() {
       for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {
         if !category.is_empty() {
@@ -141,20 +150,24 @@ impl Output<'_> {
             .from_writer(file);
 
           let mut table_headers = vec![String::from("name")];
-          if category[0].info.is_some() {
+          if args.info || args.all {
             table_headers.push(String::from("info"));
           }
-          if category[0].library.is_some() {
+          if args.library || args.all {
             table_headers.push(String::from("library"));
           }
-          if category[0].documentation.is_some() {
+          if args.documentation || args.all {
             table_headers.push(String::from("documentation"));
           }
 
           wtr.write_record(&table_headers)?;
 
           for import in category {
-            wtr.serialize(import)?;
+            let success = wtr.serialize(import);
+
+            if success.is_err() {
+              wtr.write_record(std::iter::repeat_n("", table_headers.len() - import.len()))?;
+            }
           }
 
           wtr.flush()?;
@@ -168,7 +181,7 @@ impl Output<'_> {
   }
 
   /// Output to stdout as CSV
-  pub fn csv_to_stdout(&self) -> Result<()> {
+  pub fn csv_to_stdout(&self, args: &Args) -> Result<()> {
     for (header, category) in self.headers.iter().zip(self.suspect_imports.iter()) {
       if !category.is_empty() {
         let mut wtr = csv::WriterBuilder::new()
@@ -179,20 +192,24 @@ impl Output<'_> {
         std::io::stdout().flush()?;
 
         let mut table_headers = vec![String::from("name")];
-        if category[0].info.is_some() {
+        if args.info || args.all {
           table_headers.push(String::from("info"));
         }
-        if category[0].library.is_some() {
+        if args.library || args.all {
           table_headers.push(String::from("library"));
         }
-        if category[0].documentation.is_some() {
+        if args.documentation || args.all {
           table_headers.push(String::from("documentation"));
         }
 
         wtr.write_record(&table_headers)?;
 
         for import in category {
-          wtr.serialize(import)?;
+          let success = wtr.serialize(import);
+
+          if success.is_err() {
+            wtr.write_record(std::iter::repeat_n("", table_headers.len() - import.len()))?;
+          }
         }
 
         wtr.flush()?;
