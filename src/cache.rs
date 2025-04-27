@@ -3,7 +3,6 @@
 use serde::{Serialize, Deserialize};
 use anyhow::{Result, Context, anyhow};
 use scraper::{Selector, Html};
-use directories::ProjectDirs;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use std::collections::HashSet;
@@ -163,8 +162,8 @@ impl Cache {
   pub async fn load(update: bool) -> Result<Cache> {
     let mut cache = Cache::default();
 
-    if let Some(project_dir) = ProjectDirs::from("io", "caret", "pescan") {
-      let cache_file = project_dir.cache_dir().to_owned().join("data.mpk");
+    if let Some(cache_dir) = dirs::cache_dir() {
+      let cache_file = cache_dir.join(format!("{}/data.mpk", env!("CARGO_PKG_NAME")));
 
       if cache_file.exists() && !update {
         let input_stream = fs::File::open(&cache_file)?;
