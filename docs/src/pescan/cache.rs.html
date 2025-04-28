@@ -419,7 +419,7 @@
   }
 
   <span class="doccomment">/// Get API list from cache
-  </span><span class="kw">pub fn </span>get_apis(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Vec&lt;String&gt;&gt; {
+  </span><span class="kw">pub fn </span>get_apis(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HashSet&lt;String&gt;&gt; {
     <span class="self">self</span>.apis.iter().map(|category| {
       category.iter().map(|api| {
         api.name.clone()

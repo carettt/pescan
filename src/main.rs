@@ -8,6 +8,10 @@
 //! The binary can output in multiple formats and provide
 //! a potential attack chain for the sample.
 
+pub mod args;
+pub mod output;
+pub mod cache;
+
 use clap::Parser;
 use anyhow::{Result, Context, bail};
 use goblin::{Object, pe::import::Import};
@@ -17,12 +21,12 @@ use std::collections::hash_set::HashSet;
 use std::sync::Arc;
 use std::io::{Read, Write, IsTerminal};
 
-use pescan::args::Args;
-use pescan::output::{Details, SuspectImport, Format, Output};
-use pescan::cache::Cache;
+use crate::args::Args;
+use crate::output::{Details, SuspectImport, Format, Output};
+use crate::cache::Cache;
 
 /// Flattens `Vec` of [Import]s into `Vec` of [String]s
-fn flatten_imports(raw_imports: &[Import]) -> Vec<String> {
+fn flatten_imports(raw_imports: &[Import]) -> HashSet<String> {
   raw_imports.iter()
     .map(|i| i.name.to_string()).collect()
 }
@@ -66,13 +70,10 @@ async fn main() -> Result<()> {
       std::mem::drop(pe);
 
       for category in apis.iter() {
-        let category_set = category.iter().cloned().collect::<HashSet<String>>();
-        let import_set = imports.iter().cloned().collect::<HashSet<String>>();
-
-        suspicious_imports.push(category_set.intersection(&import_set).cloned().collect());
+        suspicious_imports.push(category.intersection(&imports).cloned().collect());
       }
 
-      if args.info || args.library || args.documentation || args.all {
+      if [args.info, args.library, args.documentation, args.all].contains(&true) {
         let mut matched_details = Vec::<Vec<Details>>::new();
         for (i, category) in suspicious_imports.iter().enumerate() {
           matched_details.push(Vec::new());
@@ -151,8 +152,7 @@ async fn main() -> Result<()> {
             Format::JSON => output.json(&mut buf)?,
             Format::YAML => output.yaml(&mut buf)?,
             Format::TOML => output.toml(&mut buf)?,
-            Format::CSV => unreachable!(),
-            _ => todo!()
+            Format::CSV => unreachable!()
           }
         }
       }

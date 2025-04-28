@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["args","cache","display","output"]};
+window.SIDEBAR_ITEMS = {"fn":["flatten_imports","main"],"mod":["args","cache","output"]};

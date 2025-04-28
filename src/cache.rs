@@ -202,7 +202,7 @@ impl Cache {
   }
 
   /// Get API list from cache
-  pub fn get_apis(&self) -> Vec<Vec<String>> {
+  pub fn get_apis(&self) -> Vec<HashSet<String>> {
     self.apis.iter().map(|category| {
       category.iter().map(|api| {
         api.name.clone()

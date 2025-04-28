@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Format"],"struct":["Details","Output","SuspectImport"]};
+window.SIDEBAR_ITEMS = {"enum":["Format"],"fn":["create_tables","format_url"],"struct":["Details","Output","SuspectImport"]};
