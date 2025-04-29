@@ -18,7 +18,6 @@ use goblin::{Object, pe::import::Import};
 
 use std::{env, fs};
 use std::collections::hash_set::HashSet;
-use std::sync::Arc;
 use std::io::{Read, Write, IsTerminal};
 
 use crate::args::Args;
@@ -33,7 +32,7 @@ fn flatten_imports(raw_imports: &[Import]) -> HashSet<String> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  let args = Arc::new(Args::parse());
+  let args = Args::parse();
 
   let cache = Cache::load(args.update).await?;
   let apis = cache.get_apis();
