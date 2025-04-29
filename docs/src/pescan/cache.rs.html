@@ -215,7 +215,8 @@
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a></pre></div><pre class="rust"><code><span class="doccomment">//! Provides [Cache] struct for loading and creating a cache of APIs
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a></pre></div><pre class="rust"><code><span class="doccomment">//! Provides [Cache] struct for loading and creating a cache of APIs
 
 </span><span class="kw">use </span>serde::{Serialize, Deserialize};
 <span class="kw">use </span>anyhow::{<span class="prelude-ty">Result</span>, Context, anyhow};
@@ -228,7 +229,7 @@
 <span class="kw">use </span>std::time::Duration;
 
 <span class="doccomment">/// Wrapper for API data for caching purposes
-</span><span class="attr">#[derive(Default, Clone)]
+</span><span class="attr">#[derive(Default)]
 #[derive(Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Api {
   name: String,
@@ -259,7 +260,8 @@
 </span><span class="attr">#[derive(Default)]
 #[derive(Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Cache {
-  headers: Vec&lt;String&gt;,
+  <span class="doccomment">/// `Vec&lt;String&gt;` containing malware behaviour categories
+  </span><span class="kw">pub </span>headers: Vec&lt;String&gt;,
   apis: Vec&lt;HashSet&lt;Api&gt;&gt;
 }
 
@@ -333,7 +335,12 @@
 
         <span class="kw">let </span>res = client.get(<span class="macro">format!</span>(<span class="string">"{details_url}{api}"</span>)).send().<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if </span>res.status() == reqwest::StatusCode::NOT_ACCEPTABLE {
+        <span class="kw">if </span>res.status() != reqwest::StatusCode::OK {
+          <span class="self">self</span>.apis[i].insert(Api {
+            name: api.to_owned(),
+            ..Default::default()
+          });
+
           bar.set_message(<span class="macro">format!</span>(<span class="string">"{api} unreachable!"</span>));
           <span class="macro">eprintln!</span>();
           <span class="kw">continue</span>;
@@ -382,15 +389,15 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>(cache_dir) = dirs::cache_dir() {
       <span class="kw">let </span>cache_file = cache_dir.join(<span class="macro">format!</span>(<span class="string">"{}/data.mpk"</span>, <span class="macro">env!</span>(<span class="string">"CARGO_PKG_NAME"</span>)));
 
-      <span class="kw">if </span>cache_file.exists() &amp;&amp; !update {
+      <span class="kw">if </span>cache_file.exists() &amp;&amp; update {
+        fs::remove_file(<span class="kw-2">&amp;</span>cache_file)<span class="question-mark">?</span>;
+      }
+
+      <span class="kw">if </span>cache_file.exists() {
         <span class="kw">let </span>input_stream = fs::File::open(<span class="kw-2">&amp;</span>cache_file)<span class="question-mark">?</span>;
 
         cache = rmp_serde::from_read(<span class="kw-2">&amp;</span>input_stream)<span class="question-mark">?</span>;
       } <span class="kw">else </span>{
-        <span class="kw">if </span>update {
-          fs::remove_file(<span class="kw-2">&amp;</span>cache_file)<span class="question-mark">?</span>;
-        }
-
         <span class="kw">let </span>cache_dir = cache_file.parent().context(<span class="string">"invalid cache directory path"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>output_stream: File;
 
@@ -425,11 +432,6 @@
         api.name.clone()
       }).collect()
     }).collect()
-  }
-
-  <span class="doccomment">/// Get header list from cache
-  </span><span class="kw">pub fn </span>get_headers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt; {
-    <span class="self">self</span>.headers.clone()
   }
 }
 </code></pre></div></section></main></body></html>

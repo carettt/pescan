@@ -165,7 +165,8 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
 #![allow(clippy::all)]
 
 </span><span class="doccomment">//! PEScan is a malware analysis tool that scans portable executable (PE)
@@ -203,7 +204,6 @@
   <span class="kw">let </span>args = Arc::new(Args::parse());
 
   <span class="kw">let </span>cache = Cache::load(args.update).<span class="kw">await</span><span class="question-mark">?</span>;
-  <span class="kw">let </span>headers = cache.get_headers();
   <span class="kw">let </span>apis = cache.get_apis();
 
   <span class="kw">let </span><span class="kw-2">mut </span>sample_buffer: Vec&lt;u8&gt; = Vec::new();
@@ -231,6 +231,7 @@
   </span>{
     Object::PE(pe) =&gt; {
       <span class="kw">let </span>imports = flatten_imports(<span class="kw-2">&amp;</span>pe.imports);
+
       <span class="kw">let </span><span class="kw-2">mut </span>suspicious_imports = Vec::&lt;Vec&lt;String&gt;&gt;::new();
       <span class="kw">let </span><span class="kw-2">mut </span>details: <span class="prelude-ty">Option</span>&lt;Vec&lt;Vec&lt;Details&gt;&gt;&gt; = <span class="prelude-val">None</span>;
 
@@ -297,7 +298,7 @@
         }
       }
 
-      <span class="kw">let </span>output = Output { headers, suspect_imports };
+      <span class="kw">let </span>output = Output { headers: cache.headers, suspect_imports };
 
       <span class="kw">match </span><span class="kw-2">&amp;</span>args.format {
         Format::CSV =&gt; {
@@ -329,6 +330,7 @@
     }
   }
 
+  <span class="macro">eprintln!</span>(<span class="string">"Data provided by mrd0x &amp; contributors via https://malapi.io."</span>);
 
   <span class="prelude-val">Ok</span>(())
 }
