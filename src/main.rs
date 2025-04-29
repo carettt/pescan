@@ -162,6 +162,7 @@ async fn main() -> Result<()> {
     }
   }
 
+  eprintln!("Data provided by mrd0x & contributors via https://malapi.io.");
 
   Ok(())
 }
