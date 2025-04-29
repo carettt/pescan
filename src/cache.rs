@@ -178,7 +178,7 @@ impl Cache {
       if cache_file.exists() {
         let input_stream = fs::File::open(&cache_file)?;
 
-        cache = rmp_serde::from_read(&input_stream)?;
+        cache = rmp_serde::from_read(&input_stream).context("corrupted cache, run with --update to fix")?;
       } else {
         let cache_dir = cache_file.parent().context("invalid cache directory path")?;
         let mut output_stream: File;
