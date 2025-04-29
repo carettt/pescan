@@ -1,6 +1,6 @@
 [package]
 name = "pescan"
-version = "2.0.4"
+version = "2.0.5"
 edition = "2024"
 authors = [ "caret_" ]
 description = "static analysis tool for PE files via API import analysis. GPL-3.0-or-later."
