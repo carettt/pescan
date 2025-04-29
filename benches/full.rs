@@ -7,7 +7,8 @@ fn main_process(c: &mut Criterion) {
   c.bench_function("main_baseline", |b| {
     b.iter(|| {
       let process = Command::new("cargo")
-        .args(["run", "--release"])
+        .args(["run", "--release", "--",
+        "../wk4/Sample2/ed492db95034ca288dd52df88e3ce3ec7b146ffd854a394ac187f0553ef966d9.exe"])
         .output().expect("Failed to execute process");
 
       black_box(process);
@@ -19,7 +20,8 @@ fn main_process(c: &mut Criterion) {
   all_group.bench_function("txt", |b| {
     b.iter(|| {
       let process = Command::new("cargo")
-        .args(["run", "--release", "--", "-A"])
+        .args(["run", "--release", "--", "-A",
+        "../wk4/Sample2/ed492db95034ca288dd52df88e3ce3ec7b146ffd854a394ac187f0553ef966d9.exe"])
         .output().expect("Failed to execute process");
 
       black_box(process);
@@ -30,7 +32,8 @@ fn main_process(c: &mut Criterion) {
     b.iter(|| {
       let process = Command::new("cargo")
         .args(["run", "--release", "--",
-          "-A", "-f json"])
+          "-A", "-f json",
+        "../wk4/Sample2/ed492db95034ca288dd52df88e3ce3ec7b146ffd854a394ac187f0553ef966d9.exe"])
         .output().expect("Failed to execute process");
 
       black_box(process);
@@ -41,7 +44,8 @@ fn main_process(c: &mut Criterion) {
     b.iter(|| {
       let process = Command::new("cargo")
         .args(["run", "--release", "--",
-          "-A", "-f yaml"])
+          "-A", "-f yaml",
+        "../wk4/Sample2/ed492db95034ca288dd52df88e3ce3ec7b146ffd854a394ac187f0553ef966d9.exe"])
         .output().expect("Failed to execute process");
 
       black_box(process);
@@ -52,7 +56,8 @@ fn main_process(c: &mut Criterion) {
     b.iter(|| {
       let process = Command::new("cargo")
         .args(["run", "--release", "--",
-          "-A", "-f toml"])
+          "-A", "-f toml",
+        "../wk4/Sample2/ed492db95034ca288dd52df88e3ce3ec7b146ffd854a394ac187f0553ef966d9.exe"])
         .output().expect("Failed to execute process");
 
       black_box(process);
@@ -63,7 +68,8 @@ fn main_process(c: &mut Criterion) {
     b.iter(|| {
       let process = Command::new("cargo")
         .args(["run", "--release", "--",
-          "-A", "-f csv"])
+          "-A", "-f csv",
+        "../wk4/Sample2/ed492db95034ca288dd52df88e3ce3ec7b146ffd854a394ac187f0553ef966d9.exe"])
         .output().expect("Failed to execute process");
 
       black_box(process);
@@ -75,7 +81,8 @@ fn main_process(c: &mut Criterion) {
 
 criterion_group!{
   name = benches;
-  config = Criterion::default().warm_up_time(Duration::from_secs(12));
+  config = Criterion::default()
+    .measurement_time(Duration::from_secs(12));
   targets = main_process
 }
 criterion_main!(benches);
