@@ -40,9 +40,6 @@ async fn main() -> Result<()> {
 
   let mut sample_buffer: Vec<u8> = Vec::new();
 
-  if args.update {
-  }
-
   if let Some(path) = &args.sample {
     sample_buffer = fs::read(path)?;
   } else {
