@@ -42,7 +42,8 @@ impl Hash for Api {
 #[derive(Default)]
 #[derive(Serialize, Deserialize)]
 pub struct Cache {
-  headers: Vec<String>,
+  /// `Vec<String>` containing malware behaviour categories
+  pub headers: Vec<String>,
   apis: Vec<HashSet<Api>>
 }
 
@@ -208,10 +209,5 @@ impl Cache {
         api.name.clone()
       }).collect()
     }).collect()
-  }
-
-  /// Get header list from cache
-  pub fn get_headers(&self) -> Vec<String> {
-    self.headers.clone()
   }
 }

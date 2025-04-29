@@ -36,7 +36,6 @@ async fn main() -> Result<()> {
   let args = Arc::new(Args::parse());
 
   let cache = Cache::load(args.update).await?;
-  let headers = cache.get_headers();
   let apis = cache.get_apis();
 
   let mut sample_buffer: Vec<u8> = Vec::new();
@@ -130,7 +129,7 @@ async fn main() -> Result<()> {
         }
       }
 
-      let output = Output { headers, suspect_imports };
+      let output = Output { headers: cache.headers, suspect_imports };
 
       match &args.format {
         Format::CSV => {
