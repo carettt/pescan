@@ -11,7 +11,7 @@ use std::fs::{self, File};
 use std::time::Duration;
 
 /// Wrapper for API data for caching purposes
-#[derive(Default, Clone)]
+#[derive(Default)]
 #[derive(Serialize, Deserialize)]
 pub struct Api {
   name: String,
