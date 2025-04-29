@@ -166,15 +166,15 @@ impl Cache {
     if let Some(cache_dir) = dirs::cache_dir() {
       let cache_file = cache_dir.join(format!("{}/data.mpk", env!("CARGO_PKG_NAME")));
 
-      if cache_file.exists() && !update {
+      if cache_file.exists() && update {
+        fs::remove_file(&cache_file)?;
+      }
+
+      if cache_file.exists() {
         let input_stream = fs::File::open(&cache_file)?;
 
         cache = rmp_serde::from_read(&input_stream)?;
       } else {
-        if update {
-          fs::remove_file(&cache_file)?;
-        }
-
         let cache_dir = cache_file.parent().context("invalid cache directory path")?;
         let mut output_stream: File;
 
