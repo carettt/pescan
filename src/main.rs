@@ -148,7 +148,7 @@ async fn main() -> Result<()> {
           };
 
           match &args.format {
-            Format::TXT => output.txt(&mut buf, &args.width)?,
+            Format::TXT => output.txt(&mut buf, &args)?,
             Format::JSON => output.json(&mut buf)?,
             Format::YAML => output.yaml(&mut buf)?,
             Format::TOML => output.toml(&mut buf)?,
