@@ -264,12 +264,7 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a></pre></div><pre class="rust"><code><span class="doccomment">//! Provides [Format] enum containing supported output formats,
+<a href="#266" id="266">266</a></pre></div><pre class="rust"><code><span class="doccomment">//! Provides [Format] enum containing supported output formats,
 //! and structs for abstracting import data to output.
 
 </span><span class="kw">use </span>serde_with::skip_serializing_none;
@@ -279,7 +274,7 @@
 <span class="kw">use </span>camino::Utf8PathBuf;
 <span class="kw">use </span>anyhow::{Context, <span class="prelude-ty">Result</span>, anyhow};
 <span class="kw">use </span>tabled::{
-  settings::{location::ByColumnName, object::{Columns, Rows}, Remove, Width},
+  settings::{location::ByColumnName, object::Rows, Remove, Width},
   Table,
 };
 
@@ -351,7 +346,7 @@
 
 <span class="doccomment">/// Creates a [Vec] of pairs of headers and tables constrained
 /// to a certain width (approximately).
-</span><span class="kw">pub fn </span>create_tables(output: <span class="kw-2">&amp;</span>Output, total_width: <span class="kw-2">&amp;</span>usize)
+</span><span class="kw">pub fn </span>create_tables(output: <span class="kw-2">&amp;</span>Output, args: <span class="kw-2">&amp;</span>Args)
   -&gt; Vec&lt;(String, Table)&gt; {
   <span class="kw">let </span><span class="kw-2">mut </span>tables: Vec&lt;(String, Table)&gt; = Vec::with_capacity(output.headers.len());
 
@@ -360,25 +355,20 @@
     <span class="kw">let </span><span class="kw-2">mut </span>table = (output.headers[i].to_owned(),
       Table::new(category));
 
-    <span class="kw">if </span>!category.is_empty() {
-      <span class="kw">if </span>category[<span class="number">0</span>].info.is_none() {
-        table.<span class="number">1</span>.with(Remove::column(ByColumnName::new(<span class="string">"info"</span>)));
-        total_columns -= <span class="number">1</span>;
-      }
-      <span class="kw">if </span>category[<span class="number">0</span>].library.is_none() {
-        table.<span class="number">1</span>.with(Remove::column(ByColumnName::new(<span class="string">"library"</span>)));
-        total_columns -= <span class="number">1</span>;
-      }
-      <span class="kw">if </span>category[<span class="number">0</span>].documentation.is_none() {
-        table.<span class="number">1</span>.with(Remove::column(ByColumnName::new(<span class="string">"documentation"</span>)));
-        total_columns -= <span class="number">1</span>;
-      }
-    } <span class="kw">else </span>{
-      table.<span class="number">1</span>.with(Remove::column(Columns::new(<span class="number">1</span>..=<span class="number">3</span>)));
-      total_columns -= <span class="number">3</span>;
+    <span class="kw">if </span>!args.info &amp;&amp; !args.all {
+      table.<span class="number">1</span>.with(Remove::column(ByColumnName::new(<span class="string">"info"</span>)));
+      total_columns -= <span class="number">1</span>;
+    }
+    <span class="kw">if </span>!args.library &amp;&amp; !args.all {
+      table.<span class="number">1</span>.with(Remove::column(ByColumnName::new(<span class="string">"library"</span>)));
+      total_columns -= <span class="number">1</span>;
+    }
+    <span class="kw">if </span>!args.documentation &amp;&amp; !args.all {
+      table.<span class="number">1</span>.with(Remove::column(ByColumnName::new(<span class="string">"documentation"</span>)));
+      total_columns -= <span class="number">1</span>;
     }
 
-    table.<span class="number">1</span>.modify(Rows::new(<span class="number">0</span>..), Width::wrap(total_width / total_columns).keep_words(<span class="bool-val">true</span>));
+    table.<span class="number">1</span>.modify(Rows::new(<span class="number">0</span>..), Width::wrap(args.width / total_columns).keep_words(<span class="bool-val">true</span>));
 
     tables.push(table);
   }
@@ -419,8 +409,8 @@
 
 <span class="kw">impl </span>Output&lt;<span class="lifetime">'_</span>&gt; {
   <span class="doccomment">/// Output to `buf` as plain text
-  </span><span class="kw">pub fn </span>txt&lt;T: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>T, width: <span class="kw-2">&amp;</span>usize) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>tables = create_tables(<span class="self">self</span>, width);
+  </span><span class="kw">pub fn </span>txt&lt;T: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>T, args: <span class="kw-2">&amp;</span>Args) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span>tables = create_tables(<span class="self">self</span>, args);
 
     <span class="kw">for </span>((header, table), category) <span class="kw">in </span>tables.iter().zip(<span class="self">self</span>.suspect_imports.iter()) {
       <span class="kw">if </span>!category.is_empty() {
