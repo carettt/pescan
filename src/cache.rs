@@ -117,7 +117,12 @@ impl Cache {
 
         let res = client.get(format!("{details_url}{api}")).send().await?;
 
-        if res.status() == reqwest::StatusCode::NOT_ACCEPTABLE {
+        if res.status() != reqwest::StatusCode::OK {
+          self.apis[i].insert(Api {
+            name: api.to_owned(),
+            ..Default::default()
+          });
+
           bar.set_message(format!("{api} unreachable!"));
           eprintln!();
           continue;

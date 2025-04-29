@@ -63,6 +63,7 @@ async fn main() -> Result<()> {
   {
     Object::PE(pe) => {
       let imports = flatten_imports(&pe.imports);
+
       let mut suspicious_imports = Vec::<Vec<String>>::new();
       let mut details: Option<Vec<Vec<Details>>> = None;
 
