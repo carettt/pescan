@@ -25,3 +25,14 @@ serde_yml = "0.0.12"
 rmp-serde = "1.3.0"
 toml = "0.8.20"
 csv = "1.3.1"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bin]]
+name = "pescan"
+bench = false
+
+[[bench]]
+name = "full"
+harness = false
